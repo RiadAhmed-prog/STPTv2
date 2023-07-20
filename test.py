@@ -194,7 +194,7 @@ def get_flops(config, shape=(1920, 1080), ):
     return flops, params
 
 
-def log_to_gsheets(config_path, cfg, metrics):
+def log_to_gsheets(cfg, metrics):
     print(f'Writing results to Google Sheets file......')
     # define scope
     scope = ['https://spreadsheets.google.com/feeds',
@@ -214,7 +214,7 @@ def log_to_gsheets(config_path, cfg, metrics):
     # Specify the folder ID where you want to upload the file
     folder_id = '1WGR2cAIy-gkACz9VL1qyPW9K7pRnYPVb'  # My drive/Shareable/STPT/confusion_matrix
 
-    flops, params = get_flops(config_path)
+    flops, params = get_flops(cfg.filename)
 
     for row in rows:
         if row == 'Date':
@@ -239,16 +239,15 @@ def log_to_gsheets(config_path, cfg, metrics):
             sheet.update_cell(last_row + 1, 2, f'{model}')
 
         if row == 'Config':
-            cfg_path = os.path.join(cfg.work_dir, os.path.basename(config_path))
             # Upload the config file to Google Drive and get the URL
-            file_metadata = {'name': os.path.basename(config_path), 'parents': [folder_id]}
-            file = MediaFileUpload(cfg_path, mimetype=None)
+            file_metadata = {'name': os.path.basename(cfg.filename), 'parents': [folder_id]}
+            file = MediaFileUpload(cfg.filename, mimetype=None)
             upload_file = drive_service.files().create(body=file_metadata, media_body=file).execute()
             file_id = upload_file['id']
             file_url = f"https://drive.google.com/uc?export=view&id={file_id}"
             # Update the cell with the hyperlink formula
             last_row = len(sheet.col_values(3))
-            sheet.update_cell(last_row + 1, 3, f'=HYPERLINK("{file_url}", "{os.path.basename(config_path)}")')
+            sheet.update_cell(last_row + 1, 3, f'=HYPERLINK("{file_url}", "{os.path.basename(cfg.filename)}")')
 
         if row == 'Dataset':
             dataset = '/'.join(cfg.train_dataloader.dataset.data_root.split('/')[1:])
@@ -343,7 +342,7 @@ def main():
         mmengine.dump(metrics, args.out)
 
     if args.gsheets:
-        log_to_gsheets(args.config, cfg, metrics)
+        log_to_gsheets(cfg, metrics)
 
 
 if __name__ == '__main__':

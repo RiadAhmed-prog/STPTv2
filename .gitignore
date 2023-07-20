@@ -4,6 +4,7 @@
 *.exe
 
 # Ignore project-specific files and directories
+.idea/
 data/
 envstpt/
 results/
