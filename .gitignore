@@ -1,0 +1,14 @@
+# Ignore compiled files
+*.o
+*.pyc
+*.exe
+
+# Ignore project-specific files and directories
+data/
+envstpt/
+results/
+work_dirs/
+mmaction2/
+mmpretrain/
+practice.py
+*.pkl

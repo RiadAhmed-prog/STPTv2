@@ -1,0 +1,3 @@
+openmim
+google-api-python-client
+gspread
