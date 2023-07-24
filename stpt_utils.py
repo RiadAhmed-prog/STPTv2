@@ -1,7 +1,11 @@
+import copy
+
+import torch
 import cv2
 import numpy as np
 import math
 import re
+from mmengine.dataset import Compose
 
 # colors bgr
 blue = (255, 0, 0)
@@ -77,7 +81,6 @@ def plot_skeleton_kpts(im, kpts, steps, orig_shape=None):
         cv2.line(im, pos1, pos2, (int(r), int(g), int(b)), thickness=1)
 
 
-# store x,y position and angle value of important body keypoints for exercise 1 (which mostly involves hand)
 def drawline_from_point_list(image, points):
     """
     image: black image to draw STPT plot on
@@ -117,7 +120,6 @@ def drawline_from_point_list(image, points):
     return image
 
 
-# store x,y position and angle value of important body keypoints for exercise 1 (which mostly involves hand)
 def drawline_from_point_list_wrong(image, points):
     """
     image: black image to draw STPT plot on
@@ -154,6 +156,51 @@ def drawline_from_point_list_wrong(image, points):
 
                     # current end point is next start point
                     start_point = end_point
+    return image
+
+
+def drawline_from_point_list_stgcn(image, points, ranked_kp: list):
+    """
+    image: black image to draw STPT plot on
+    points: keypoints of shape (M, T, V, C) -->
+            M = no. of person, T = no. of frames, V, C = (17, 2) for coco keypoints
+    ranked_kp: important keypoints output from STGCN model
+    """
+    # Line thickness of 1 px
+
+    for person in points:
+        for i, frame in enumerate(person):
+            if i == 0:
+                start = frame
+            else:
+                end = frame
+
+                for j, (start_point, end_point) in enumerate(zip(start, end)):
+                    # if both increase
+                    if end_point[0] > start_point[0] and end_point[1] > start_point[1]:
+                        color = red
+                    # if x increases
+                    elif end_point[0] > start_point[0] and end_point[1] <= start_point[1]:
+                        color = green
+                    # if y increases
+                    elif end_point[0] <= start_point[0] and end_point[1] > start_point[1]:
+                        color = orange
+                    # if both decrease
+                    else:
+                        color = yellow
+                    if j == ranked_kp[0]:
+                        thickness = 6
+                    elif j == ranked_kp[1]:
+                        thickness = 2
+                    else:
+                        thickness = 1
+
+                    image = cv2.line(image, (int(start_point[0]), int(start_point[1])),
+                                     (int(end_point[0]), int(end_point[1])), color, thickness)
+
+                    # current end point is next start point
+                start = end
+
     return image
 
 
@@ -290,6 +337,27 @@ def generate_frame_plot(annotation, output_path):
     img = np.zeros(shape, dtype=np.uint8)
 
     img = drawline_from_point_list(img, keypoints)
+    img = colouring_halt_points(img, keypoints)
+
+    cv2.imwrite(output_path, img)
+
+
+def generate_frame_plot_stgcn(cfg, model, device, annotation, output_path):
+    important_parts = ["head", "abdomen", "chest", "l_hand", "l_elbow", "l_shoulder", "r_hand", "r_elbow",
+                       "r_shoulder"]
+    keypoints = annotation['keypoint']
+    shape = (annotation['img_shape'][0], annotation['img_shape'][1], 3)
+
+    img = np.zeros(shape, dtype=np.uint8)
+    pipeline = Compose(cfg.val_pipeline)
+    ann = copy.deepcopy(annotation)
+    packed_results = pipeline(ann)
+    inputs = packed_results['inputs'].unsqueeze(0).to(device)
+    feats = model(inputs, mode='tensor')
+    sum_intensity = torch.sum(feats, dim=(1, 2, 3))
+    ranked_kp = np.argsort(sum_intensity.cpu().detach().numpy()).squeeze()
+
+    img = drawline_from_point_list_stgcn(img, keypoints, ranked_kp)
     img = colouring_halt_points(img, keypoints)
 
     cv2.imwrite(output_path, img)

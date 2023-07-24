@@ -33,19 +33,25 @@ mim install -v -e .
 # Instructions
 
 ---
-Download the `ntu120_2d.pkl` file containing skeleton information of the NTU120-RGB dataset from this [link](https://download.openmmlab.com/mmaction/v1.0/skeleton/data/ntu60_2d.pkl) \
+Download the `ntu120_2d.pkl` file containing skeleton information of the NTU120-RGB dataset from this [link](https://download.openmmlab.com/mmaction/v1.0/skeleton/data/ntu60_2d.pkl) and extract to `data/skeleton` folder \
 Use the following command to generate STPT images of NTU120-RGB dataset:
 ```python
-python generate_stpt_dataset --[OPTIONAL]
+python generate_stpt_dataset {dataset} --[OPTIONAL]
 ```
+**dataset**: Must be either 'NTU60' or 'NTU120'\
 [OPTIONAL] args:\
-**group**: must be one of ['medical_conditions', 'daily_actions', 'mutual_actions'],
-**test**: if set, will generate 'test' split
+**group**: must be one of ['medical_conditions', 'daily_actions', 'mutual_actions']\
+**test**: if set, will generate 'test' split\
+**stgcn-config**: config file for the stgcn/stgcn++ model for important keypoint inference\
+**stgcn-weights**: stgcn/stgcn++ model weights 
 
 Dataset will be generated in the _**data**_ directory in the following structure:
 ```
 stpt-activity
 ├── data
+│   └── skeleton
+│           └── ntu60_2d.pkl
+│           └── ...
 │   └── STPT
 │        └── medical_conditions
 │           ├── meta
