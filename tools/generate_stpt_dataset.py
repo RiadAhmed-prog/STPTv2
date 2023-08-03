@@ -42,6 +42,7 @@ def load_model(cfg, weights, device):
 
 
 # TODO: args in main, dataset with stpt features
+
 def main(dataset, group=None, test=False, config=None, weights=None, video=False, plot_skeleton_kpts=False):
     if group is not None:
         print(f'Creating subset for {group}')

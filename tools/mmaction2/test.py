@@ -21,13 +21,20 @@ import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from dotenv import load_dotenv
+import json
+
+load_dotenv()
+
+ROOT_DIR = os.getenv('ROOT_DIR')
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='MMAction2 test (and eval) a model')
-    parser.add_argument('config', help='test config file path')
-    parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('--json', type=str, nargs='?', help='parse arguments from a JSON file')
+    parser.add_argument('--config', help='test config file path')
+    parser.add_argument('--checkpoint', help='checkpoint file')
     parser.add_argument(
         '--work-dir',
         help='the directory to save the file containing evaluation metrics')
@@ -79,6 +86,13 @@ def parse_args():
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
+
+    if args.json:
+        with open(os.path.join(ROOT_DIR, args.json), 'rt') as f:
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json.load(f))
+            args = parser.parse_args(namespace=t_args)
+
     return args
 
 
@@ -239,8 +253,7 @@ def log_to_gsheets(cfg, metrics, args):
             sheet.update_cell(last_row + 1, 8, f'=HYPERLINK("{image_url}", "Click here to open")')
 
 
-def main():
-    args = parse_args()
+def main(args):
 
     # load config
     cfg = Config.fromfile(args.config)
@@ -286,4 +299,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)

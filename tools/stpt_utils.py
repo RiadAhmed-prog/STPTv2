@@ -62,7 +62,8 @@ def put_multiline_text(image, text, org, fontFace, fontScale, color, thickness, 
     lines = text.split('\n')
 
     for i, line in enumerate(lines):
-        cv2.putText(image, line, (org[0], org[1] + i * len(coco_keypoints)), fontFace, fontScale, color, thickness, cv2.LINE_AA)
+        cv2.putText(image, line, (org[0], org[1] + i * len(coco_keypoints)), fontFace, fontScale, color, thickness,
+                    cv2.LINE_AA)
 
 
 def find_key_by_value(dictionary, value):
@@ -344,13 +345,13 @@ def colouring_halt_points(image, points):
     total_difference = 0
     # thickness of -1 px for filled circle
     thickness = -1
-    for person in points:
-        for i, frame in enumerate(person):
-            if i == 0:
-                start = frame
+    for f_idx in range(points.shape[1]):
+        for p_idx in range(points.shape[0]):
+            if f_idx == 0:
+                start = points[p_idx, f_idx]
             else:
-                if i <= 3:
-                    end = frame
+                if f_idx <= 3:
+                    end = points[p_idx, f_idx]
 
                     for start_point, end_point in zip(start, end):
                         x_difference = x_difference + abs(end_point[0] - start_point[0])
@@ -366,45 +367,6 @@ def colouring_halt_points(image, points):
                 else:
                     x_difference = 0
                     y_difference = 0
-
-    return image
-
-
-def colouring_halt_points_wrong(image, points):
-    """
-    image: black image to draw STPT plot on
-    points: keypoints of shape (M, T, V, C) -->
-            M = no. of person, T = no. of frames, V, C = (17, 2) for coco keypoints
-    """
-    # Blue color in RGB
-    color = blue
-    count = 0
-    thresh = 5
-    radius = 4
-    x_difference = 0
-    y_difference = 0
-    total_difference = 0
-    # thickness of -1 px for filled circle
-    thickness = -1
-    for person in points:
-        for frame in person:
-            for i, kp in enumerate(frame):
-                if i == 0:
-                    start_point = kp
-                else:
-                    if i <= 3:
-                        end_point = kp
-                        x_difference = x_difference + abs(end_point[0] - start_point[0])
-                        y_difference = y_difference + abs(end_point[1] - start_point[1])
-                        total_difference = x_difference + y_difference
-                        if total_difference <= thresh:
-                            image = cv2.circle(image, (int(start_point[0]), int(start_point[1])), radius, color,
-                                               thickness)
-                            image = cv2.circle(image, (int(end_point[0]), int(end_point[1])), radius, color, thickness)
-                        start_point = end_point
-                    else:
-                        x_difference = 0
-                        y_difference = 0
 
     return image
 
