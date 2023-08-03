@@ -1,3 +1,4 @@
 openmim
 google-api-python-client
 gspread
+python-dotenv
