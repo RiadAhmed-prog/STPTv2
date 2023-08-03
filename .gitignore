@@ -11,5 +11,11 @@ results/
 work_dirs/
 mmaction2/
 mmpretrain/
+!*/mmaction2
+!*/mmpretrain
 practice.py
+practice
+misc/output
+output
 *.pkl
+*.json

@@ -18,13 +18,20 @@ import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ROOT_DIR = os.getenv('ROOT_DIR')
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='MMPreTrain test (and eval) a model')
-    parser.add_argument('config', help='test config file path')
-    parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('--json', type=str, nargs='?', help='parse arguments from a JSON file')
+    parser.add_argument('--config', help='test config file path')
+    parser.add_argument('--checkpoint', help='checkpoint file')
     parser.add_argument(
         '--work-dir',
         help='the directory to save the file containing evaluation metrics')
@@ -82,9 +89,13 @@ def parse_args():
         default='none',
         help='job launcher')
     parser.add_argument(
-        '--gsheets',
-        action='store_true',
-        help='Whether to write the test results to Google sheets.')
+        '--shape',
+        type=int,
+        nargs='+',
+        default=[1920, 1080],
+        help='input image size')
+    parser.add_argument('--log-to-gsheets', nargs='+', type=str,
+                        help='log test results to Google sheets. Arguments should be "{file name/sheet_no(1,2,etc.)}" "{path/to/client_secret.json}" "{gdrive folder id}"')
     # When using PyTorch version >= 2.0.0, the `torch.distributed.launch`
     # will pass the `--local-rank` parameter to `tools/train.py` instead
     # of `--local_rank`.
@@ -92,6 +103,13 @@ def parse_args():
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
+
+    if args.json:
+        with open(os.path.join(ROOT_DIR, args.json), 'rt') as f:
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json.load(f))
+            args = parser.parse_args(namespace=t_args)
+
     return args
 
 
@@ -105,7 +123,7 @@ def merge_args(cfg, args):
         cfg.work_dir = args.work_dir
     elif cfg.get('work_dir', None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
-        cfg.work_dir = osp.join('./work_dirs',
+        cfg.work_dir = osp.join('../../work_dirs',
                                 osp.splitext(osp.basename(args.config))[0])
 
     cfg.load_from = args.checkpoint
@@ -194,27 +212,32 @@ def get_flops(config, shape=(1920, 1080), ):
     return flops, params
 
 
-def log_to_gsheets(cfg, metrics):
+def log_to_gsheets(cfg, metrics, args):
+    [sheets_name, client_secret_json, folder_id] = args.log_to_gsheets
+    assert sheets_name != '' and client_secret_json != '' and folder_id != '', \
+        "Need sheets file name, path to client_secret.json and gdrive folder id"
+
     print(f'Writing results to Google Sheets file......')
     # define scope
     scope = ['https://spreadsheets.google.com/feeds',
              'https://www.googleapis.com/auth/drive']
 
     # set credentials
-    creds = Credentials.from_service_account_file('misc/personal_client_secret.json', scopes=scope)
+    creds = Credentials.from_service_account_file(client_secret_json, scopes=scope)
     drive_service = build('drive', 'v3', credentials=creds)
 
     # authorize access to Google Sheets API
     client = gspread.authorize(creds)
 
     # open the Google Sheet
-    sheet = client.open('STPT results').sheet1
+    file = sheets_name.split('/')[0]
+    sheet_no = int(sheets_name.split('/')[1]) - 1
+    sheet = client.open(file).get_worksheet(sheet_no)
     rows = sheet.row_values(1)
 
-    # Specify the folder ID where you want to upload the file
-    folder_id = '1WGR2cAIy-gkACz9VL1qyPW9K7pRnYPVb'  # My drive/Shareable/STPT/confusion_matrix
-
-    flops, params = get_flops(cfg.filename)
+    if 'FLOPs' in rows or 'Parameters' in rows:
+        assert args.shape, 'Need input shape for FLOPs and params'
+        flops, params = get_flops(cfg, shape=args.shape)
 
     for row in rows:
         if row == 'Date':
@@ -288,8 +311,7 @@ def log_to_gsheets(cfg, metrics):
             sheet.update_cell(last_row + 1, 9, f'=HYPERLINK("{image_url}", "Click here to open")')
 
 
-def main():
-    args = parse_args()
+def main(args):
 
     if args.out is None and args.out_item is not None:
         raise ValueError('Please use `--out` argument to specify the '
@@ -317,7 +339,7 @@ def main():
     # start testing
     metrics = runner.test()
 
-    if args.out and args.out_item == 'metrics':
+    if args.out and 'metrics' in args.out_item:
         if 'confusion_matrix/result' in metrics.keys():
             try:
                 # Try to build the dataset.
@@ -341,9 +363,10 @@ def main():
 
         mmengine.dump(metrics, args.out)
 
-    if args.gsheets:
-        log_to_gsheets(cfg, metrics)
+    if args.log_to_gsheets:
+        log_to_gsheets(cfg, metrics, args)
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)

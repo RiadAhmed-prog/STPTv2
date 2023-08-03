@@ -1,0 +1,10 @@
+{
+    "config": "work_dirs/STPT/efficientnetv2_b0/efficientnetv2-b0_8xb64_stpt.py",
+    "checkpoint": "work_dirs/STPT/efficientnetv2_b0/best_accuracy_top1_epoch_96.pth",
+    "work_dir": "results/STPT/efficientnetv2_b0-1",
+    "cfg_options": {
+
+    },
+    "out": "results/STPT/efficientnetv2_b0-2/result.json",
+    "out_item": "metrics"
+}

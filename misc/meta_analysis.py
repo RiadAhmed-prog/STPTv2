@@ -5,22 +5,35 @@ import argparse
 from tqdm import tqdm
 
 
+def tuple_type(arg):
+    try:
+        # Split the input string by comma and convert to tuple of same data type
+        for a in arg.split(','):
+            if a[0].isspace():
+                raise ValueError
+        data_type = type(arg.split(',')[0])
+        values = tuple(map(data_type, arg.split(',')))
+        return values
+    except (ValueError, SyntaxError):
+        raise argparse.ArgumentTypeError("Tuples must be comma-separated (no white space) values of same data type")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Generate csv file containing metadata of models')
     parser.add_argument('directory', help='Directory containing the metafiles')
     parser.add_argument('out', help='Output .csv file')
-    parser.add_argument('--dataset', type=str, help='Models trained on specified dataset. Defaults to "ImageNet-1k"',
+    parser.add_argument('--dataset', type=tuple_type,
+                        help='Models trained on specified dataset(s). Defaults to "ImageNet-1k"',
                         default='ImageNet-1k')
-    parser.add_argument('--task', type=str,
-                        help='Models trained for specified task. Defaults to "Image Classification"',
+    parser.add_argument('--task', type=tuple_type,
+                        help='Models trained for specified task(s). Defaults to "Image Classification"',
                         default='Image Classification')
     arguments = parser.parse_args()
     return arguments
 
 
-def main(directory, out_file, dataset: str, task: str):
-
+def main(directory, out_file, dataset: tuple, task: tuple):
     file_paths = []
     # Iterate over subdirectories and files
     for root, dirs, files in os.walk(directory):
@@ -45,7 +58,7 @@ def main(directory, out_file, dataset: str, task: str):
                 if model['Results'] is not None:
                     try:
                         for result in model['Results']:
-                            if result['Dataset'] == dataset and result['Task'] == task:
+                            if result['Dataset'] in dataset and result['Task'] in task:
                                 try:
                                     row = {
                                         'Name': model['Name'],
@@ -63,7 +76,7 @@ def main(directory, out_file, dataset: str, task: str):
                                     continue
                     except TypeError:
                         result = model['Results']
-                        if result['Dataset'] == dataset and result['Task'] == task:
+                        if result['Dataset'] in dataset and result['Task'] in task:
                             try:
                                 row = {
                                     'Name': model['Name'],
@@ -97,19 +110,27 @@ def main(directory, out_file, dataset: str, task: str):
 
 if __name__ == '__main__':
     args = parse_args()
+
+    if isinstance(args.task, str):
+        args.task = tuple(args.task)
+    if isinstance(args.dataset, str):
+        args.dataset = tuple(args.dataset)
+
     if args.directory.split('/')[0] == 'mmaction2':
-        tasks = ('Action Detection', 'Temporal Action Localization', 'Action Recognition', 'Skeleton-based Action Recognition')
+        tasks = (
+            'Action Detection', 'Temporal Action Localization', 'Action Recognition',
+            'Skeleton-based Action Recognition')
         datasets = ('Kinetics-600', 'AVA v2.2', 'SthV2', 'HMDB51', 'NTU60-XSub', 'AVA v2.1', 'NTU120-XSub-3D',
                     'ActivityNet v1.3', 'Moments in Time V1', 'NTU120-XSub-2D', 'Kinetics-700', 'Kinetics-400',
                     'FineGYM', 'NTU60-XSub-2D', 'NTU60-XSub-3D', 'UCF101', 'SthV1')
-        assert args.task in tasks, f"task must be one of {tasks}"
-        assert args.dataset in datasets, f"dataset must be one of {datasets}"
+        assert set(args.task).issubset(set(tasks)), f"{args.task} must be in {tasks}"
+        assert set(args.dataset).issubset(set(datasets)), f"{args.dataset} must be in {datasets}"
     if args.directory.split('/')[0] == 'mmpretrain':
         tasks = ('Image-To-Text Retrieval', 'Visual Question Answering', 'Image Retrieval', 'Image Classification',
                  'Image Caption', 'Multi-Label Classification', 'NLVR', 'Text-To-Image Retrieval', 'Visual Grounding')
         datasets = ('CIFAR100', 'ImageNet-1k', 'CIFAR-10', 'CUB-200-2011', 'RefCOCO', 'NLVR2', 'VQAv2', 'CIFAR-100',
                     'COCO', 'InShop', 'PASCAL VOC 2007')
-        assert args.task in tasks, f"task must be one of {tasks}"
-        assert args.dataset in datasets, f"dataset must be one of {datasets}"
+        assert set(args.task).issubset(set(tasks)), f"{args.task} must be in {tasks}"
+        assert set(args.dataset).issubset(set(datasets)), f"{args.dataset} must be in {datasets}"
 
     main(args.directory, args.out, args.dataset, args.task)

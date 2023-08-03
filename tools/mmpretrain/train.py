@@ -3,26 +3,32 @@ import argparse
 import os
 import os.path as osp
 from copy import deepcopy
-
+import json
 from mmengine.config import Config, ConfigDict, DictAction
 from mmengine.registry import RUNNERS
 from mmengine.runner import Runner
 from mmengine.utils import digit_version
 from mmengine.utils.dl_utils import TORCH_VERSION
 
+from dotenv import load_dotenv
+load_dotenv()
+
+ROOT_DIR = os.getenv('ROOT_DIR')
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a model')
-    parser.add_argument('config', help='train config file path')
-    parser.add_argument('--work-dir', help='the dir to save logs and models')
+    parser.add_argument('--json', type=str, nargs='?', help='parse arguments from a JSON file')
+    parser.add_argument('--config', type=str, help='train config file path')
+    parser.add_argument('--work-dir', type=str, help='the dir to save logs and models')
     parser.add_argument(
         '--resume',
         nargs='?',
         type=str,
         const='auto',
         help='If specify checkpoint path, resume from it, while if not '
-        'specify, try to auto resume from the latest checkpoint '
-        'in the work directory.')
+             'specify, try to auto resume from the latest checkpoint '
+             'in the work directory.')
     parser.add_argument(
         '--amp',
         action='store_true',
@@ -35,7 +41,7 @@ def parse_args():
         '--auto-scale-lr',
         action='store_true',
         help='whether to auto scale the learning rate according to the '
-        'actual batch size and the original batch size.')
+             'actual batch size and the original batch size.')
     parser.add_argument(
         '--no-pin-memory',
         action='store_true',
@@ -50,11 +56,11 @@ def parse_args():
         nargs='+',
         action=DictAction,
         help='override some settings in the used config, the key-value pair '
-        'in xxx=yyy format will be merged into config file. If the value to '
-        'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
-        'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
-        'Note that the quotation marks are necessary and that no white space '
-        'is allowed.')
+             'in xxx=yyy format will be merged into config file. If the value to '
+             'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
+             'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
+             'Note that the quotation marks are necessary and that no white space '
+             'is allowed.')
     parser.add_argument(
         '--launcher',
         choices=['none', 'pytorch', 'slurm', 'mpi'],
@@ -67,6 +73,12 @@ def parse_args():
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
+
+    if args.json:
+        with open(os.path.join(ROOT_DIR, args.json), 'rt') as f:
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json.load(f))
+            args = parser.parse_args(namespace=t_args)
 
     return args
 
@@ -86,7 +98,7 @@ def merge_args(cfg, args):
         cfg.work_dir = args.work_dir
     elif cfg.get('work_dir', None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
-        cfg.work_dir = osp.join('./work_dirs',
+        cfg.work_dir = osp.join('../../work_dirs',
                                 osp.splitext(osp.basename(args.config))[0])
 
     # enable automatic-mixed-precision training
@@ -140,9 +152,7 @@ def merge_args(cfg, args):
     return cfg
 
 
-def main():
-    args = parse_args()
-
+def main(args):
     # load config
     cfg = Config.fromfile(args.config)
 
@@ -163,4 +173,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)

@@ -33,6 +33,7 @@ mim install -v -e .
 # Instructions
 
 ---
+**Rename `.env.template` to `.env`**\
 Download the `ntu120_2d.pkl` file containing skeleton information of the NTU120-RGB dataset from this [link](https://download.openmmlab.com/mmaction/v1.0/skeleton/data/ntu60_2d.pkl) and extract to `data/skeleton` folder \
 Use the following command to generate STPT images of NTU120-RGB dataset:
 ```python
@@ -60,11 +61,10 @@ stpt-activity
 │           └── val
 └── ...
 ```
-Run `./train.sh` to train a model from the _**configs**_ directory
+First, rename `train_mmpretrain.json.template` to `train_mmpretrain.json`, then\
+Run `./train_mmpretrain.sh` to train a model from the _**configs**_ directory specified in **config** key in `train_mmpretrain.json`
 
 (if permission denied error shows up use the command `chmod +x ./train.sh`)
 
-Run `./test.sh` to test the model from the _**configs**_ directory, with loaded checkpoint from the **_work_dirs_** directory.\
-
-**N.B.**\
-If `--gsheets` argument is used when running `./test.sh`, results on the **test** set will be saved to the [Google Sheets file](https://docs.google.com/spreadsheets/d/1IQAqw0tQ5ySzbnyKn2i86hgak1PZwmuOFrYzbvUGcrI/edit?usp=sharing)
+First, rename `test_mmpretrain.json.template` to `train_mmpretrain.json`, then\
+Run `./test_mmpretrain.sh` to test and eval trained a model specified in **checkpoint** key in `test_mmpretrain.json`

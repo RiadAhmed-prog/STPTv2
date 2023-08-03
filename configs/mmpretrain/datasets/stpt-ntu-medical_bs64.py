@@ -33,7 +33,7 @@ train_dataloader = dict(
     num_workers=2,
     dataset=dict(
         type=dataset_type,
-        data_root='data/STPTv2/medical_conditions',
+        data_root='data/STPT-skeleton/medical_conditions',
         split='train',
         metainfo={'classes': CLASSES},
         pipeline=train_pipeline),
@@ -45,7 +45,7 @@ val_dataloader = dict(
     num_workers=2,
     dataset=dict(
         type=dataset_type,
-        data_root='data/STPTv2/medical_conditions',
+        data_root='data/STPT-skeleton/medical_conditions',
         split='val',
         metainfo={'classes': CLASSES},
         pipeline=test_pipeline),
@@ -53,20 +53,22 @@ val_dataloader = dict(
 )
 
 val_evaluator = dict(type='Accuracy', topk=(1, 5))
+test_dataloader = val_dataloader
 
-# If you want standard test, please manually configure the test dataset
-test_dataloader = dict(
-    batch_size=64,
-    num_workers=2,
-    dataset=dict(
-        type=dataset_type,
-        data_root='data/STPTv2/medical_conditions/',
-        data_prefix='test/',
-        ann_file='meta/test.txt',
-        metainfo={'classes': CLASSES},
-        pipeline=test_pipeline),
-    sampler=dict(type='DefaultSampler', shuffle=False),
-)
+# # If you want standard test, please manually configure the test dataset
+# test_dataloader = dict(
+#     batch_size=64,
+#     num_workers=2,
+#     dataset=dict(
+#         type=dataset_type,
+#         data_root='data/STPTv2/medical_conditions/',
+#         data_prefix='val/',
+#         ann_file='meta/test.txt',
+#         metainfo={'classes': CLASSES},
+#         pipeline=test_pipeline),
+#     sampler=dict(type='DefaultSampler', shuffle=False),
+# )
+
 test_evaluator = [
     dict(type='Accuracy', topk=(1, 5)),
     dict(type='SingleLabelMetric', items=['precision', 'recall']),
